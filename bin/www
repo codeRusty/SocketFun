@@ -1,0 +1,265 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('Socks:server');
+var http = require('http');
+var fs =  require('fs');
+
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '8011');
+app.set('port', port);
+
+/**
+ * Create HTTP server.
+ */
+/**
+ *Socket IO
+ **/
+var server = http.createServer(app);
+var io = require('socket.io')(server);
+//var rooms = ["General", "Angular.js", "Socket.io", "Express", "Node.js", "MongoDb", "PHP"];
+var numUsers = 0;
+var rooms = [];
+io.on('connection', function (socket) {
+
+    var addedUser = false;
+
+    // when the client emits 'new message', this listens and executes
+    socket.on('new message', function (data) {
+        // we tell the client to execute 'new message'
+        socket.broadcast.emit('new message', {
+            username: socket.username,
+            message: data
+        });
+    });
+
+    // when the client emits 'add user', this listens and executes
+    socket.on('add user', function (username) {
+        if (addedUser) return;
+
+        // we store the username in the socket session for this client
+        socket.username = username;
+        ++numUsers;
+        addedUser = true;
+        socket.emit('rooms', {
+            rooms: rooms
+        });
+
+
+        socket.emit('login', {
+            numUsers: numUsers
+        });
+        // echo globally (all clients) that a person has connected
+        socket.broadcast.emit('user joined', {
+            username: socket.username,
+            numUsers: numUsers
+        });
+
+
+    });
+
+    // when the client emits 'typing', we broadcast it to others
+    socket.on('typing', function () {
+        socket.broadcast.emit('typing', {
+            username: socket.username
+        });
+    });
+
+    // when the client emits 'stop typing', we broadcast it to others
+    socket.on('stop typing', function () {
+        socket.broadcast.emit('stop typing', {
+            username: socket.username
+        });
+    });
+
+    // when the user disconnects.. perform this
+    socket.on('disconnect', function () {
+        if (addedUser) {
+            --numUsers;
+
+            // echo globally that this client has left
+            socket.broadcast.emit('user left', {
+                username: socket.username,
+                numUsers: numUsers
+            });
+        }
+    });
+
+    socket.on('joinroom', function (data) {
+        if (data.length >= 1) {
+            socket.join(data);
+        }
+        console.log(socket);
+        socket.emit('roomjoined', data);
+    });
+
+
+    ///   Game play
+
+
+    function room(roomSocket, roomId) {
+        this.roomSocket = roomSocket;  //Stores the socket for the desktop connection
+        this.roomId = roomId;          //The room id/name. A unique string that links desktop to mobile
+        this.mobileSockets = [];       //A list of all the mobile connections
+    };
+
+    socket.on("new room", function (data) {
+
+        rooms.push(new room(socket, data.room));
+        console.log('web request aa gai');
+    });
+
+    socket.on("connect mobile", function (data, fn) {
+        var desktopRoom = null;
+        for (var i = 0; i < rooms.length; i++) {
+            if (rooms[i].roomId == data.room) {
+                desktopRoom = i;
+            }
+        }
+        if (desktopRoom !== null) {
+            rooms[desktopRoom].mobileSockets.push(socket);
+            socket.roomi = desktopRoom;
+            fn({registered: true});
+            console.log(socket.roomi);
+            rooms[socket.roomi].roomSocket.emit('add user', socket.id, data);
+        } else {
+            //Callback returns false with an error
+            fn({registered: false, error: "No live desktop connection found"});
+            console.log('not connected');
+        }
+    });
+
+    socket.on("disconnect", function(){
+        var destroyThis = null;
+        if(typeof socket.roomi == 'undefined'){
+
+            //The lost socket is a room
+
+            //Search through all the rooms and remove the socket which matches our disconnected id
+            for(var i in rooms){
+                if(rooms[i].roomSocket.id == socket.id){
+                    destroyThis = rooms[i];
+                }
+            }
+
+            if(destroyThis !== null){ rooms.splice(destroyThis, 1);}
+
+        }else{
+            //Lost socket is a mobile connections
+
+            //Sort through the mobile sockets for that particular room, and remove accordingly
+            var roomId = socket.roomi;
+            for(var i in rooms[roomId].mobileSockets){
+                if(rooms[roomId].mobileSockets[i] == socket){
+                    destroyThis = i;
+                }
+            }
+
+            if(destroyThis !== null){rooms[roomId].mobileSockets.splice(destroyThis, 1);}
+
+            //alert the room that this user was a member of
+            rooms[roomId].roomSocket.emit('remove user', socket.id);
+        }
+    });
+
+    socket.on("update movement", function(data){
+        if(typeof socket.roomi !== 'undefined'){
+            if(typeof rooms[socket.roomi] !== 'undefined'){
+                rooms[socket.roomi].roomSocket.emit('update position', socket.id, data);
+            }
+        }
+    });
+
+    socket.on('change-o', function (alpha, beta, gamma) {
+        if(rooms.length)
+        rooms[socket.roomi].roomSocket.emit('move', alpha,beta,gamma);
+    });
+
+
+
+    // camera
+    socket.on('userimage', function (dataobj) {
+        console.log(dataobj.imageData);
+        rooms[socket.roomi].roomSocket.emit('userimage', dataobj);
+    });
+
+
+
+});
+
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+server.listen(port);
+server.on('error', onError);
+server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+    var port = parseInt(val, 10);
+
+    if (isNaN(port)) {
+        // named pipe
+        return val;
+    }
+
+    if (port >= 0) {
+        // port number
+        return port;
+    }
+
+    return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+    if (error.syscall !== 'listen') {
+        throw error;
+    }
+
+    var bind = typeof port === 'string'
+        ? 'Pipe ' + port
+        : 'Port ' + port;
+
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+        case 'EACCES':
+            console.error(bind + ' requires elevated privileges');
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(bind + ' is already in use');
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+    var addr = server.address();
+    var bind = typeof addr === 'string'
+        ? 'pipe ' + addr
+        : 'port ' + addr.port;
+    debug('Listening on ' + bind);
+}

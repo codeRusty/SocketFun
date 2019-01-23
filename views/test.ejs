@@ -1,0 +1,137 @@
+<DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            #compass{
+                width:100%;
+                transform-origin: 50% 50%;
+                -webkit-transform-origin: 50% 50%;
+                -moz-transform-origin: 50% 50%;
+            }
+        </style>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+        <script>
+            var socket = io('http://localhost:9000/');
+            var socket = io();
+            function getQueryStringValue (key) {
+                return unescape(window.location.search.replace(new RegExp("^(?:.*[&\\?]" + escape(key).replace(/[\.\+\*]/g, "\\$&") + "(?:\\=([^&]*))?)?.*$", "i"), "$1"));
+            }
+            socket.emit('connect mobile', { room: getQueryStringValue("id")}, function(data){
+                if(data.registered = true){
+                    registered = true;
+                }else{
+                    $('#error').append(data.error);
+                }
+            });
+        </script>
+
+        <script>
+            function init() {
+                var compass = document.getElementById('compass');
+                if(window.DeviceOrientationEvent) {
+                    window.addEventListener('deviceorientation', function(event) {
+
+                        var alpha;
+                        //Check for iOS property
+                        if(event.webkitCompassHeading) {
+                            alpha = event.webkitCompassHeading;
+                            //Rotation is reversed for iOS
+                            compass.style.WebkitTransform = 'rotate(-' + alpha + 'deg)';
+                        }
+                        //non iOS
+                        else {
+                            alpha = event.alpha;
+                            beta = event.beta;
+                            gama = event.gamma;
+                            var alph = document.getElementById('salpha');
+                            alph.innerHTML = alpha;
+                            var bet = document.getElementById('sbeta');
+                            bet.innerHTML = beta;
+                            var gam = document.getElementById('sgaama');
+                            gam.innerHTML = gama;
+                            webkitAlpha = alpha;
+                            if(!window.chrome) {
+                                //Assume Android stock (this is crude, but good enough for our example) and apply offset
+                                webkitAlpha = alpha-270;
+                            }
+                            socket.emit('change-o' , alpha,beta,gama );
+
+                        }
+
+                        compass.style.Transform = 'rotate(' + alpha + 'deg)';
+                        compass.style.WebkitTransform = 'rotate('+ webkitAlpha + 'deg)';
+                        //Rotation is reversed for FF
+                        compass.style.MozTransform = 'rotate(-' + alpha + 'deg)';
+                    }, false);
+                    window.addEventListener("devicemotion", function(event) {
+                        // Process event.acceleration, event.accelerationIncludingGravity,
+                        // event.rotationRate and event.interval
+                        document.getElementById('acc').innerHTML = 'Acceleration =  X : ' + event.acceleration.x + ' Y : ' + event.acceleration.y + ' Z : ' + event.acceleration.z;
+                        document.getElementById('accInG').innerHTML = 'Acceleration In G =  X : ' + event.accelerationIncludingGravity.x + ' Y : ' + event.accelerationIncludingGravity.y + ' Z : ' + event.accelerationIncludingGravity.z;
+                        document.getElementById('rota').innerHTML = 'Rotation =  X : ' + event.rotation.alpha + ' Y : ' + event.rotation.beta + ' Z : ' + event.rotation.gamma;
+
+                    }, true);
+
+
+                    // Put event listeners into place
+
+                }
+                window.addEventListener("DOMContentLoaded", function() {
+                    // Grab elements, create settings, etc.
+                    var canvas = document.getElementById("canvas"),
+                            context = canvas.getContext("2d"),
+                            video = document.getElementById("video"),
+                            videoObj = { "video": true },
+                            errBack = function(error) {
+                                console.log("Video capture error: ", error.code);
+                            };
+
+                    // Put video listeners into place
+                    if(navigator.getUserMedia) { // Standard
+                        navigator.getUserMedia(videoObj, function(stream) {
+                            video.src = stream;
+                            video.play();
+                        }, errBack);
+                    } else if(navigator.webkitGetUserMedia) { // WebKit-prefixed
+                        navigator.webkitGetUserMedia(videoObj, function(stream){
+                            video.src = window.webkitURL.createObjectURL(stream);
+                            video.play();
+                        }, errBack);
+                    }
+                    else if(navigator.mozGetUserMedia) { // Firefox-prefixed
+                        navigator.mozGetUserMedia(videoObj, function(stream){
+                            video.src = window.URL.createObjectURL(stream);
+                            video.play();
+                        }, errBack);
+                    }
+                }, false);
+
+            }
+        </script>
+
+
+    </head>
+    <body onload="init()">
+
+    <div>
+        <p>aplha <span id="salpha"></span></p>
+        <p>beta <span id="sbeta"></span></p>
+        <p>gaama <span id="sgaama"></span></p>
+    </div>
+    <div id="acc">
+
+    </div>
+    <div id="accInG" style="height: 100px;">
+
+    </div>
+    <div id="rota" style="height: 100px;">
+
+    </div>
+    <input type="file" id="imageFile" />
+
+
+
+
+    </body>
+    </html>

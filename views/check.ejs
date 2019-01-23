@@ -1,0 +1,150 @@
+<DOCTYPE html>
+    <html>
+    <head>
+
+        <script src="http://code.jquery.com/jquery-2.1.4.min.js" type="application/javascript"></script>
+
+    <script src="/socket.io/socket.io.js"></script>
+        <script>
+            var socket = io('http://localhost:9000/');
+            var socket = io();
+            socket.emit('new room', { room: 'lol'});
+            socket.on('add user',function (socketid,data){
+                console.log(socketid + '    :::    ' + data );
+            });
+
+
+
+</script>
+
+        <script>
+            randomleft = Math.floor(Math.random() * 100);
+            randomtop = Math.floor(Math.random() * 100);
+            $(document).ready(function (e) {
+
+
+                var ball = $('.ball');
+                var garden = $('.garden');
+                var output = $('.output');
+                var dest  = $('.dest');
+                var life = $('#life');
+                dest.css('top',randomtop );
+                dest.css('left',randomleft);
+                var maxX = garden.width() - ball.width();
+                var maxY = garden.height() - ball.height();
+                var lifecount = parseInt(life.html());
+
+                if(lifecount > 0 ) {
+                    socket.on('move', function (alpha, beta, gamma) {
+
+                        var x = beta;  // In degree in the range [-180,180]
+                        var y = gamma; // In degree in the range [-90,90]
+
+
+                        // Because we don't want to have the device upside down
+                        // We constrain the x value to the range [-90,90]
+                        if (x > 90) {
+                            x = 90
+                        }
+                        ;
+                        if (x < -90) {
+                            x = -90
+                        }
+                        ;
+
+                        // To make computation easier we shift the range of
+                        // x and y to [0,180]
+                        x += 90;
+                        y += 90;
+
+                        var topx = parseInt(maxX * x / 180 - 10);
+                        var lefty = parseInt(maxX * y / 180 - 10);
+
+                        output.html("beta : " + topx + "\n" + "gamma: " + lefty + "\n");
+                       if(topx >=560 || topx<= 0)
+                       {
+                           ball.css('top', '300px');
+                           ball.css('left', '300px');
+                           lifecount = parseInt(life.html());
+                           life.html((lifecount - 1).toString());
+                           alert('You are dead !!');
+                           return;
+                       }
+                        if(lefty >=560 || topx<= 0)
+                        {
+                            ball.css('top', '300px');
+                            ball.css('left', '300px');
+                            lifecount = parseInt(life.html());
+                            life.html((lifecount - 1).toString());
+                            alert('You are dead !!');
+                            return;
+                        }
+                        if(lifecount >0) {
+                            if (lefty <= randomleft + 1 && lefty >= randomleft && topx <= randomtop + 1 && topx >= randomtop) {
+                                alert('Reached Destination!!');
+                                randomleft = Math.floor(Math.random() * 150);
+                                randomtop = Math.floor(Math.random() * 150);
+                                dest.css('top', randomtop);
+                                dest.css('left', randomleft);
+                            }
+                            else {
+                                ball.css('top', ((maxX * x / 180 - 10) + "px"));
+                                ball.css('left', ((maxY * y / 180 - 10) + "px"));
+
+                            }
+                        }
+                    });
+                }
+                else
+                {
+                    alert('Game End !!')
+                }
+
+            });
+        </script>
+        <style>
+            body{
+                background-color: black;
+                color: #FFFFFF;
+            }
+            .garden {
+                position: relative;
+                width: 600px;
+                height: 600px;
+                border: 5px solid #CCC;
+                border-radius: 10px;
+                margin: 0 auto;
+                background-color: white;
+            }
+
+            .ball {
+                position: absolute;
+                top: 270px;
+                left: 270px;
+                width: 30px;
+                height: 30px;
+                background: dodgerblue;
+                border-radius: 100%;
+            }
+
+            .dest {
+                top: 120px;
+                left: 120px;
+                position: absolute;
+                border: 2px solid green;
+                height: 30px;
+                width: 30px;
+            }
+        </style>
+    </head>
+    <body>
+    <h3>Socket Game !! </h3> Life :  <span id="life">5</span>
+    <div class="garden">
+        <div class="ball"></div>
+        <div class="dest"></div>
+
+    </div>
+
+    <span class="output"></span>
+    </body>
+    </html>

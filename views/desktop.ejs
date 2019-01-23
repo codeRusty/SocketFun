@@ -1,0 +1,55 @@
+<DOCTYPE html>
+    <html>
+    <head>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            var socket = io('http://localhost:9000/');
+            var socket = io();
+            socket.emit('new room', { room: 'lol'});
+            socket.on('add user',function (socketid,data){
+                console.log(socketid + '    :::    ' + data );
+            });
+
+            socket.on('move', function(alpha,beta,gamma){
+                if(beta< 0 ) {
+                    compass.style.marginTop =beta.toString().replace('-','') + 'px';
+                    compass.style.height =beta.toString().replace('-','') + 'px';
+                }
+                else {
+                    compass.style.height = beta + 'px';
+                    compass.style.width = gamma + 'px';
+                }
+//                compass.style.Transform = 'rotate(' + data + 'deg)';
+//                compass.style.WebkitTransform = 'rotate('+ data + 'deg)';
+//                //Rotation is reversed for FF
+//                compass.style.MozTransform = 'rotate(-' + data + 'deg)';
+            });
+
+            socket.on('userimage',function(obj){
+                console.log('hogaya');
+                var imgholder = document.getElementById('imghold');
+                imgholder.src = obj.imageData
+            });
+        </script>
+        <style>
+            div{
+
+            }
+            #compass
+            {
+
+                margin: 0 auto;
+                height:100px;
+                width: 100px;
+                background-color: red;
+            }
+        </style>
+    </head>
+    <body>
+    <div id="compass">
+
+    </div>
+
+    <img id ="imghold" />
+    </body>
+    </html>

@@ -1,0 +1,38 @@
+<DOCTYPE html>
+    <html>
+    <head>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="http://code.jquery.com/jquery-2.1.4.min.js" type="application/javascript"></script>
+        <script>
+            var socket = io('http://localhost:8011/');
+            var socket = io();
+            function getQueryStringValue(key) {
+                return unescape(window.location.search.replace(new RegExp("^(?:.*[&\\?]" + escape(key).replace(/[\.\+\*]/g, "\\$&") + "(?:\\=([^&]*))?)?.*$", "i"), "$1"));
+            }
+            socket.emit('connect mobile', {room: 'lol'}, function (data) {
+                if (data.registered = true) {
+                    registered = true;
+                } else {
+                    $('#error').append(data.error);
+                }
+            });
+
+
+        </script>
+        <script>
+
+            function handleOrientation(event) {
+                var beta = event.beta;
+                var gamma = event.gamma;
+                var alpha = event.alpha;
+                $('body').html(alpha+' , ' + beta + ' , ' + gamma);
+                socket.emit('change-o' , alpha,beta,gamma );
+            }
+            window.addEventListener('deviceorientation', handleOrientation);
+
+        </script>
+    </head>
+    <body>
+
+    </body>
+    </html>
